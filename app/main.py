@@ -2,7 +2,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 
 from app.lender import LenderClient
 from app.models import Application, ApplicationIn, Status
-from app.service import InvalidState, SubmissionFailed, submit_application
+from app.service import ApplicationNotFound, InvalidState, SubmissionFailed, submit_application
 from app.store import ApplicationStore
 
 api = FastAPI(title="Lender Submissions")
@@ -42,11 +42,10 @@ def submit(
     store: ApplicationStore = Depends(get_store),
     lender: LenderClient = Depends(get_lender),
 ) -> Application:
-    app = store.get(app_id)
-    if app is None:
-        raise HTTPException(404, "application not found")
     try:
-        return submit_application(app, lender)
+        return submit_application(app_id, lender, store)
+    except ApplicationNotFound as exc:
+        raise HTTPException(404, str(exc))
     except InvalidState as exc:
         raise HTTPException(409, str(exc))
     except SubmissionFailed as exc:
